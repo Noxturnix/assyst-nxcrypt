@@ -55,11 +55,11 @@ string run(vector<string> const &args) {
 	if (
 		splitted_args.size() <= 1
 		|| (
-			LowerString(splitted_args.at(1)) == "--quiet"
+			LowerString(splitted_args.at(1)) == "--raw"
 			&& splitted_args.size() == 2
 		)
 	)
-		return "## Usage: `-t nxencrypt [<password>|--nopassword] [--quiet] <message>`\nAdvanced text encryption program running directly on Assyst's sandbox environment via WebAssembly.\n\nExample:\n- `-t nxencrypt 123456 My secret message`\n- `-t nxencrypt --nopassword Hello World`\n- `-t nxencrypt S3cr3t --quiet :heart:`\n\nNote:\nUse `-t nxdecrypt` to decrypt a message.\n\nSource:\n[GitHub](<https://github.com/Noxturnix/assyst-nxcrypt>)";
+		return "## Usage: `-t nxencrypt [<password>|--nopassword] [--raw] <message>`\nAdvanced text encryption program running directly on Assyst's sandbox environment via WebAssembly.\n\nExample:\n- `-t nxencrypt 123456 My secret message`\n- `-t nxencrypt --nopassword Hello World`\n- `-t nxencrypt S3cr3t --raw :heart:`\n\nNote:\nUse `-t nxdecrypt` to decrypt a message.\n\nSource:\n[GitHub](<https://github.com/Noxturnix/assyst-nxcrypt>)";
 
 	ostringstream outputOSS;
 
@@ -69,13 +69,13 @@ string run(vector<string> const &args) {
 	unsigned char key[crypto_stream_chacha20_KEYBYTES];
 	unsigned char nonce[crypto_stream_chacha20_NONCEBYTES];
 
-	bool quiet_output = false;
+	bool raw_output = false;
 	unsigned int message_start_idx = 1;
 
 	if (LowerString(password) == "--nopassword")
 		password.clear();
-	if (LowerString(splitted_args.at(1)) == "--quiet") {
-		quiet_output = true;
+	if (LowerString(splitted_args.at(1)) == "--raw") {
+		raw_output = true;
 		message_start_idx = 2;
 	}
 	for (unsigned int i = message_start_idx; i < splitted_args.size(); ++i) {
@@ -112,7 +112,7 @@ string run(vector<string> const &args) {
 	char encrypted_base64[sodium_base64_ENCODED_LEN(sizeof encrypted, sodium_base64_VARIANT_ORIGINAL)];
 	sodium_bin2base64(encrypted_base64, sizeof encrypted_base64, encrypted, sizeof encrypted, sodium_base64_VARIANT_ORIGINAL);
 
-	if (quiet_output) outputOSS << encrypted_base64;
+	if (raw_output) outputOSS << encrypted_base64;
 	else {
 		outputOSS << "Password: " << (password.length() == 0 ? ":x:" : ":white_check_mark:") << endl;
 		outputOSS << "**Result:**" << endl;

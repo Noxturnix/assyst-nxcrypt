@@ -56,11 +56,11 @@ string run(vector<string> const &args) {
 			|| splitted_args.size() > 3
 		)
 		|| (
-			LowerString(splitted_args.at(1)) == "--quiet"
+			LowerString(splitted_args.at(1)) == "--raw"
 			&& splitted_args.size() == 2
 		)
 	)
-		return "## Usage: `-t nxdecrypt [<password>|--nopassword] [--quiet] <ciphertext>`\nAdvanced text decryption program running directly on Assyst's sandbox environment via WebAssembly.\n\nExample:\n- `-t nxdecrypt 123456 cPfXJymKTXKpwaIsZpT9EyT2taHOKDygp2AnrV2VXpdsZPLheWsjSA==`\n- `-t nxdecrypt --nopassword LvhAafCGZqtLPletDZkSdtPIrmCYRinG`\n- `-t nxdecrypt S3cr3t --quiet p0g7DdUBwhaKSh6Z6qWuwjoD4zlEfLaY`\n\nNote:\nUse `-t nxencrypt` to encrypt a message.\n\nSource:\n[GitHub](<https://github.com/Noxturnix/assyst-nxcrypt>)";
+		return "## Usage: `-t nxdecrypt [<password>|--nopassword] [--raw] <ciphertext>`\nAdvanced text decryption program running directly on Assyst's sandbox environment via WebAssembly.\n\nExample:\n- `-t nxdecrypt 123456 cPfXJymKTXKpwaIsZpT9EyT2taHOKDygp2AnrV2VXpdsZPLheWsjSA==`\n- `-t nxdecrypt --nopassword LvhAafCGZqtLPletDZkSdtPIrmCYRinG`\n- `-t nxdecrypt S3cr3t --raw p0g7DdUBwhaKSh6Z6qWuwjoD4zlEfLaY`\n\nNote:\nUse `-t nxencrypt` to encrypt a message.\n\nSource:\n[GitHub](<https://github.com/Noxturnix/assyst-nxcrypt>)";
 
 	ostringstream outputOSS;
 
@@ -70,13 +70,13 @@ string run(vector<string> const &args) {
 	unsigned char key[crypto_stream_chacha20_KEYBYTES];
 	unsigned char nonce[crypto_stream_chacha20_NONCEBYTES];
 
-	bool quiet_output = false;
+	bool raw_output = false;
 	unsigned int ciphertext_idx = 1;
 
 	if (LowerString(password) == "--nopassword")
 		password.clear();
-	if (LowerString(splitted_args.at(1)) == "--quiet") {
-		quiet_output = true;
+	if (LowerString(splitted_args.at(1)) == "--raw") {
+		raw_output = true;
 		ciphertext_idx = 2;
 	}
 	encrypted_base64 = splitted_args.at(ciphertext_idx);
@@ -104,7 +104,7 @@ string run(vector<string> const &args) {
 	if (sodium_unpad(&plaintext_size, plaintext_buf, sizeof plaintext_buf, 16) != 0) return "[nxcrypt error: Failed to unpad message.]";
 	for (unsigned int i = 0; i < plaintext_size; ++i) plaintext.push_back(plaintext_buf[i]);
 
-	if (quiet_output) outputOSS << plaintext;
+	if (raw_output) outputOSS << plaintext;
 	else {
 		outputOSS << "Password: " << (password.length() == 0 ? ":x:" : ":white_check_mark:") << endl;
 		outputOSS << "**Result:**" << endl;
