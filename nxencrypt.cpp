@@ -28,11 +28,35 @@ string BufferToHex(unsigned char *buf, size_t size) {
 }
 
 string run(vector<string> const &args) {
+	string args_str;
+	vector<string> splitted_args;
+
+	for (unsigned int i = 0; i < args.size(); ++i) {
+		args_str += args.at(i);
+		if (args.size() - 1 != i) args_str.push_back(' ');
+	}
+	
+	string arg_buf;
+	bool args_str_just_splitted = true;
+	for (char const &c : args_str) {
+		if (c == ' ') {
+			if (!args_str_just_splitted) {
+				splitted_args.push_back(arg_buf);
+				arg_buf.clear();
+				args_str_just_splitted = true;
+			}
+		} else {
+			arg_buf.push_back(c);
+			args_str_just_splitted = false;
+		}
+	}
+	if (!args_str_just_splitted) splitted_args.push_back(arg_buf);
+
 	if (
-		args.size() <= 1
+		splitted_args.size() <= 1
 		|| (
-			LowerString(args.at(1)) == "--quiet"
-			&& args.size() == 2
+			LowerString(splitted_args.at(1)) == "--quiet"
+			&& splitted_args.size() == 2
 		)
 	)
 		return "## Usage: `-t nxencrypt [<password>|--nopassword] [--quiet] <message>`\nAdvanced text encryption program running directly on Assyst's sandbox environment via WebAssembly.\n\nExample:\n- `-t nxencrypt 123456 My secret message`\n- `-t nxencrypt --nopassword Hello World`\n- `-t nxencrypt S3cr3t --quiet :heart:`\n\nNote:\nUse `-t nxdecrypt` to decrypt a message.\n\nSource:\n[GitHub](<https://github.com/Noxturnix/assyst-nxcrypt>)";
@@ -40,7 +64,7 @@ string run(vector<string> const &args) {
 	ostringstream outputOSS;
 
 	string plaintext;
-	string password(args.at(0));
+	string password(splitted_args.at(0));
 	unsigned char key_key[crypto_generichash_KEYBYTES] = { 0xed, 0x15, 0x73, 0x95, 0xa4, 0xd1, 0x05, 0xbc, 0xca, 0x36, 0x1f, 0x4e, 0xde, 0x64, 0x78, 0x5c, 0x88, 0xb4, 0x27, 0x44, 0xcb, 0x67, 0xe3, 0x19, 0xf9, 0x58, 0x2f, 0xbe, 0xbc, 0xea, 0x0f, 0xc9 }; // blake2b-256("Noxturnix")
 	unsigned char key[crypto_stream_chacha20_KEYBYTES];
 	unsigned char nonce[crypto_stream_chacha20_NONCEBYTES];
@@ -50,13 +74,13 @@ string run(vector<string> const &args) {
 
 	if (LowerString(password) == "--nopassword")
 		password.clear();
-	if (LowerString(args.at(1)) == "--quiet") {
+	if (LowerString(splitted_args.at(1)) == "--quiet") {
 		quiet_output = true;
 		message_start_idx = 2;
 	}
-	for (unsigned int i = message_start_idx; i < args.size(); ++i) {
-		plaintext += args.at(i);
-		if (args.size() - 1 != i) plaintext.push_back(' ');
+	for (unsigned int i = message_start_idx; i < splitted_args.size(); ++i) {
+		plaintext += splitted_args.at(i);
+		if (splitted_args.size() - 1 != i) plaintext.push_back(' ');
 	}
 
 	// Hash the password.
