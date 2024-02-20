@@ -5,7 +5,7 @@
 #include <random>
 
 #include "sodium/crypto_generichash.h"
-#include "sodium/crypto_secretbox.h"
+#include "sodium/crypto_stream_chacha20.h"
 #include "sodium/utils.h"
 
 using namespace emscripten;
@@ -28,20 +28,33 @@ string BufferToHex(unsigned char *buf, size_t size) {
 }
 
 string run(vector<string> const &args) {
-	if (args.size() <= 1)
-		return "## Usage: `-t nxencrypt [<password>/--nopassword] <message>`\nAdvanced text encryption program running directly on Assyst's sandbox environment via WebAssembly.\n\nExample:\n- `-t nxencrypt 123456 My secret message`\n- `-t nxencrypt --nopassword Hello World`\n\nNote:\nUse `-t nxdecrypt` to decrypt a message.";
+	if (
+		args.size() <= 1
+		|| (
+			LowerString(args.at(1)) == "--quiet"
+			&& args.size() == 2
+		)
+	)
+		return "## Usage: `-t nxencrypt [<password>|--nopassword] [--quiet] <message>`\nAdvanced text encryption program running directly on Assyst's sandbox environment via WebAssembly.\n\nExample:\n- `-t nxencrypt 123456 My secret message`\n- `-t nxencrypt --nopassword Hello World`\n- `-t nxencrypt S3cr3t --quiet :heart:`\n\nNote:\nUse `-t nxdecrypt` to decrypt a message.\n\nSource:\n[GitHub](<https://github.com/Noxturnix/assyst-nxcrypt>)";
 
 	ostringstream outputOSS;
 
 	string plaintext;
 	string password(args.at(0));
 	unsigned char key_key[crypto_generichash_KEYBYTES] = { 0xed, 0x15, 0x73, 0x95, 0xa4, 0xd1, 0x05, 0xbc, 0xca, 0x36, 0x1f, 0x4e, 0xde, 0x64, 0x78, 0x5c, 0x88, 0xb4, 0x27, 0x44, 0xcb, 0x67, 0xe3, 0x19, 0xf9, 0x58, 0x2f, 0xbe, 0xbc, 0xea, 0x0f, 0xc9 }; // blake2b-256("Noxturnix")
-	unsigned char key[crypto_secretbox_KEYBYTES];
-	unsigned char nonce[crypto_secretbox_NONCEBYTES];
+	unsigned char key[crypto_stream_chacha20_KEYBYTES];
+	unsigned char nonce[crypto_stream_chacha20_NONCEBYTES];
+
+	bool quiet_output = false;
+	unsigned int message_start_idx = 1;
 
 	if (LowerString(password) == "--nopassword")
 		password.clear();
-	for (unsigned int i = 1; i < args.size(); ++i) {
+	if (LowerString(args.at(1)) == "--quiet") {
+		quiet_output = true;
+		message_start_idx = 2;
+	}
+	for (unsigned int i = message_start_idx; i < args.size(); ++i) {
 		plaintext += args.at(i);
 		if (args.size() - 1 != i) plaintext.push_back(' ');
 	}
@@ -60,14 +73,14 @@ string run(vector<string> const &args) {
 	unsigned char plaintext_buf[plaintext.length() + 16];
 	size_t plaintext_buf_padded_size;
 	for (unsigned int i = 0; i < plaintext.length(); ++i) plaintext_buf[i] = plaintext.at(i);
-	if (sodium_pad(&plaintext_buf_padded_size, plaintext_buf, plaintext.length(), 16, sizeof plaintext_buf) != 0) return "Padding failed.";
+	if (sodium_pad(&plaintext_buf_padded_size, plaintext_buf, plaintext.length(), 16, sizeof plaintext_buf) != 0) return "[nxcrypt error: Padding failed.]";
 
 	// Encrypt the message.
-	unsigned char ciphertext[crypto_secretbox_MACBYTES + plaintext_buf_padded_size];
-	crypto_secretbox_easy(ciphertext, plaintext_buf, plaintext_buf_padded_size, nonce, key);
+	unsigned char ciphertext[plaintext_buf_padded_size];
+	crypto_stream_chacha20_xor(ciphertext, plaintext_buf, plaintext_buf_padded_size, nonce, key);
 
 	// Concatenate nonce.
-	unsigned char encrypted[sizeof ciphertext + crypto_secretbox_NONCEBYTES];
+	unsigned char encrypted[sizeof ciphertext + crypto_stream_chacha20_NONCEBYTES];
 	for (unsigned int i = 0; i < sizeof ciphertext; ++i) encrypted[i] = ciphertext[i];
 	for (unsigned int i = sizeof ciphertext; i < sizeof encrypted; ++i) encrypted[i] = nonce[i - sizeof ciphertext];
 
@@ -75,9 +88,12 @@ string run(vector<string> const &args) {
 	char encrypted_base64[sodium_base64_ENCODED_LEN(sizeof encrypted, sodium_base64_VARIANT_ORIGINAL)];
 	sodium_bin2base64(encrypted_base64, sizeof encrypted_base64, encrypted, sizeof encrypted, sodium_base64_VARIANT_ORIGINAL);
 
-	outputOSS << "Password: " << (password.length() == 0 ? ":x:" : ":white_check_mark:") << endl;
-	outputOSS << "**Result:**" << endl;
-	outputOSS << "```" << encrypted_base64 << "```";
+	if (quiet_output) outputOSS << encrypted_base64;
+	else {
+		outputOSS << "Password: " << (password.length() == 0 ? ":x:" : ":white_check_mark:") << endl;
+		outputOSS << "**Result:**" << endl;
+		outputOSS << "```" << encrypted_base64 << "```";
+	}
 
 	return outputOSS.str();
 }

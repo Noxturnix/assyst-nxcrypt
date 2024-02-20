@@ -5,16 +5,16 @@ Assyst tags for advanced message encryption/decryption powered by WebAssembly.
 ## Algorithm
 
 ```
-                                         [message]
-                                             |
-                                             v
-                                  (ISO/IEC 7816-4 padding)
-                                             |
-                                             v
-[password] ----> (blake2b-256) ----> (XSalsa20Poly1305) ----> [ciphertext]
-                       ^                     ^
-                       |                     |
-                 (blake2b-256)         [random nonce]
+                                      [message]
+                                          |
+                                          v
+                               (ISO/IEC 7816-4 padding)
+                                          |
+                                          v
+[password] ----> (blake2b-256) ----> (ChaCha20) ----> [ciphertext]
+                       ^                  ^
+                       |                  |
+                 (blake2b-256)      [random nonce]
                        ^
                        |
                   "Noxturnix"
